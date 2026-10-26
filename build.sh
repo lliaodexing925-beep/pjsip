@@ -12,6 +12,7 @@ cat source.part00 source.part01 source.part02 source.part03 source.part04 source
 echo 'ed994f4610181f90dda768e7aea77208695fb226bf5a8351f18cc5f8d63df0bd  '"$WORK/INWARD-iOS-source.tar.xz" | shasum -a 256 -c -
 tar -xJf "$WORK/INWARD-iOS-source.tar.xz" -C "$WORK/ios"
 /usr/bin/sed -i '' -e 's/\.weight(\.850)/.weight(.heavy)/g' -e 's/\.weight(\.800)/.weight(.heavy)/g' -e 's/\.weight(\.750)/.weight(.bold)/g' -e 's/\.weight(\.700)/.weight(.bold)/g' -e 's/\.weight(\.650)/.weight(.semibold)/g' -e 's/\.weight(\.600)/.weight(.semibold)/g' -e 's/\.weight(\.500)/.weight(.medium)/g' -e 's/weight: \.850/weight: .heavy/g' -e 's/weight: \.800/weight: .heavy/g' -e 's/weight: \.750/weight: .bold/g' -e 's/weight: \.700/weight: .bold/g' -e 's/weight: \.650/weight: .semibold/g' -e 's/weight: \.600/weight: .semibold/g' -e 's/weight: \.500/weight: .medium/g' -e 's/\.topBarTrailing/.navigationBarTrailing/g' -e 's/\.topBarLeading/.navigationBarLeading/g' -e 's/{ _, _ in/{ _ in/g' "$WORK"/ios/INWARD/Sources/*.swift
+/usr/bin/sed -i '' -e 's/@State private var rating = 5; @State private var body = ""/@State private var rating = 5; @State private var reviewText = ""/' -e 's/\$body/\$reviewText/g' -e 's/body: body/body: reviewText/g' -e 's/body\.trimming/reviewText.trimming/g' "$WORK/ios/INWARD/Sources/SocialProfileView.swift"
 /usr/bin/sed -i '' '52c\
             let bodyValue: Any = input.map { $0 as Any } ?? NSNull()\
             request.httpBody = try JSONSerialization.data(withJSONObject: ["json": bodyValue])
