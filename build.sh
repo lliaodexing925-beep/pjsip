@@ -12,6 +12,9 @@ cat source.part00 source.part01 source.part02 source.part03 source.part04 source
 echo 'ed994f4610181f90dda768e7aea77208695fb226bf5a8351f18cc5f8d63df0bd  '"$WORK/INWARD-iOS-source.tar.xz" | shasum -a 256 -c -
 tar -xJf "$WORK/INWARD-iOS-source.tar.xz" -C "$WORK/ios"
 /usr/bin/sed -i '' -e 's/\.weight(\.850)/.weight(.heavy)/g' -e 's/\.weight(\.800)/.weight(.heavy)/g' -e 's/\.weight(\.750)/.weight(.bold)/g' -e 's/\.weight(\.700)/.weight(.bold)/g' -e 's/\.weight(\.650)/.weight(.semibold)/g' -e 's/\.weight(\.600)/.weight(.semibold)/g' -e 's/\.weight(\.500)/.weight(.medium)/g' -e 's/weight: \.850/weight: .heavy/g' -e 's/weight: \.800/weight: .heavy/g' -e 's/weight: \.750/weight: .bold/g' -e 's/weight: \.700/weight: .bold/g' -e 's/weight: \.650/weight: .semibold/g' -e 's/weight: \.600/weight: .semibold/g' -e 's/weight: \.500/weight: .medium/g' -e 's/\.topBarTrailing/.navigationBarTrailing/g' -e 's/\.topBarLeading/.navigationBarLeading/g' -e 's/{ _, _ in/{ _ in/g' "$WORK"/ios/INWARD/Sources/*.swift
+/usr/bin/sed -i '' '73c\
+    func catalog(_ base: URL) async throws -> Catalog { var data = try await call(base, "catalog.list", input: nil, method: "GET"); data["help"] = data["helpRequests"]; return Catalog(data) }
+' "$WORK/ios/INWARD/Sources/APIClient.swift"
 cd "$WORK/ios"
 python3 - <<'PY'
 from pathlib import Path
