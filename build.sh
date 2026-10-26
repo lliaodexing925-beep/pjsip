@@ -12,5 +12,6 @@ git fetch --depth 1 origin master
 git checkout -q FETCH_HEAD
 git fetch --depth 1 origin d2fe4421d8cf120f47fc5d9b5884323afc68cd12
 git checkout -q d2fe4421d8cf120f47fc5d9b5884323afc68cd12 -- build.sh
+sed -i.bak 's/call(base, "social.profile", input: \["publicId": publicId\])/call(base, "social.profile", input: ["publicId": publicId], method: "GET")/' ios/INWARD/Sources/APIClient.swift
 sed -i.bak "s/name=iPhone 16,OS=latest/id=$UDID/" build.sh
 bash ./build.sh
