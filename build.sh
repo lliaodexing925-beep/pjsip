@@ -8,7 +8,6 @@ mkdir -p "$WORK/ios" "$WORK/package"
 
 main() {
 cd "$ROOT"
-# Repair the single transport-dropped character, then verify the complete archive.
 sed -i.bak 's/hQqFLAG/hQZqFLAG/' source.part06
 cat source.part00 source.part01 source.part02 source.part03 source.part04 source.part05 source.part06 source.part07 source.part08 \
   | tr -d '\n\r' \
@@ -51,10 +50,8 @@ if grep -R -E 'WKWebView|UIWebView' "$WORK/ios/INWARD/Sources"; then
   exit 1
 fi
 
-cp -R "$APP" "$WORK/package/Payload/INWARD.app" 2>/dev/null || {
-  mkdir -p "$WORK/package/Payload"
-  cp -R "$APP" "$WORK/package/Payload/INWARD.app"
-}
+mkdir -p "$WORK/package/Payload"
+cp -R "$APP" "$WORK/package/Payload/INWARD.app"
 cd "$WORK/package"
 /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload "$WORK/INWARD-unsigned.ipa"
 unzip -t "$WORK/INWARD-unsigned.ipa"
@@ -68,7 +65,15 @@ main 2>&1 | tee "$LOG"
 STATUS=${PIPESTATUS[0]}
 set -e
 
-# Return both diagnostics and any verified IPA on a dedicated branch.
+if [ "$STATUS" -ne 0 ]; then
+  echo '--- INWARD DIAGNOSTIC ANNOTATIONS ---'
+  tail -n 30 "$LOG" | while IFS= read -r line; do
+    line="${line//'%'/'%25'}"
+    line="${line//$'\r'/''}"
+    printf '::error::%s\n' "$line"
+  done
+fi
+
 cd "$ROOT"
 git config user.name 'github-actions[bot]'
 git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
