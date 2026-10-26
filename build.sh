@@ -5,6 +5,7 @@ WORK="${RUNNER_TEMP:-/tmp}/inward-ios-build"
 rm -rf "$WORK"
 mkdir -p "$WORK/ios" "$WORK/package"
 main() {
+set -e
 cd "$ROOT"
 sed -i.bak 's/hQqFLAG/hQZqFLAG/' source.part06
 cat source.part00 source.part01 source.part02 source.part03 source.part04 source.part05 source.part06 source.part07 source.part08 | tr -d '\n\r' | base64 -D > "$WORK/INWARD-iOS-source.tar.xz"
