@@ -75,12 +75,15 @@ if [ "$STATUS" -ne 0 ]; then
   done
   exit "$STATUS"
 fi
-URL="$(curl -fsS --max-time 90 -F 'file=@'"$WORK"'/INWARD-unsigned.ipa;type=application/octet-stream' https://0x0.st || true)"
+URL="$(curl -fsS --max-time 90 -F 'reqtype=fileupload' -F 'time=1h' -F 'fileToUpload=@'"$WORK"'/INWARD-unsigned.ipa' https://litterbox.catbox.moe/resources/internals/api.php || true)"
 if [[ "$URL" == http* ]]; then printf '::notice::INWARD_IPA_URL=%s\n' "$URL"; exit 0; fi
-URL="$(curl -fsS --max-time 90 --upload-file "$WORK/INWARD-unsigned.ipa" https://transfer.sh/INWARD-unsigned.ipa || true)"
+URL="$(curl -fsS --max-time 90 -F 'reqtype=fileupload' -F 'fileToUpload=@'"$WORK"'/INWARD-unsigned.ipa' https://catbox.moe/user/api.php || true)"
+if [[ "$URL" == http* ]]; then printf '::notice::INWARD_IPA_URL=%s\n' "$URL"; exit 0; fi
+RESPONSE="$(curl -fsS --max-time 90 -F 'files[]=@'"$WORK"'/INWARD-unsigned.ipa' https://uguu.se/upload.php || true)"
+URL="$(printf '%s' "$RESPONSE" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("files",[{}])[0].get("url",""))' 2>/dev/null || true)"
 if [[ "$URL" == http* ]]; then printf '::notice::INWARD_IPA_URL=%s\n' "$URL"; exit 0; fi
 RESPONSE="$(curl -fsS --max-time 90 -F 'file=@'"$WORK"'/INWARD-unsigned.ipa' https://tmpfiles.org/api/v1/upload || true)"
 URL="$(printf '%s' "$RESPONSE" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("data",{}).get("url",""))' 2>/dev/null || true)"
 if [[ "$URL" == http* ]]; then printf '::notice::INWARD_IPA_URL=%s\n' "$URL"; exit 0; fi
-printf '::error::All IPA return services failed. 0x0=%s tmpfiles=%s\n' "$URL" "$RESPONSE"
+printf '::error::All IPA return services failed.\n'
 exit 1
