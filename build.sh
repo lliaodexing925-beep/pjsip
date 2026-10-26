@@ -12,6 +12,7 @@ cat source.part00 source.part01 source.part02 source.part03 source.part04 source
 echo 'ed994f4610181f90dda768e7aea77208695fb226bf5a8351f18cc5f8d63df0bd  '"$WORK/INWARD-iOS-source.tar.xz" | shasum -a 256 -c -
 tar -xJf "$WORK/INWARD-iOS-source.tar.xz" -C "$WORK/ios"
 /usr/bin/sed -i '' -e 's/\.weight(\.850)/.weight(.heavy)/g' -e 's/\.weight(\.800)/.weight(.heavy)/g' -e 's/\.weight(\.750)/.weight(.bold)/g' -e 's/\.weight(\.700)/.weight(.bold)/g' -e 's/\.weight(\.650)/.weight(.semibold)/g' -e 's/\.weight(\.600)/.weight(.semibold)/g' -e 's/\.weight(\.500)/.weight(.medium)/g' -e 's/weight: \.850/weight: .heavy/g' -e 's/weight: \.800/weight: .heavy/g' -e 's/weight: \.750/weight: .bold/g' -e 's/weight: \.700/weight: .bold/g' -e 's/weight: \.650/weight: .semibold/g' -e 's/weight: \.600/weight: .semibold/g' -e 's/weight: \.500/weight: .medium/g' -e 's/\.topBarTrailing/.navigationBarTrailing/g' -e 's/\.topBarLeading/.navigationBarLeading/g' -e 's/{ _, _ in/{ _ in/g' "$WORK"/ios/INWARD/Sources/*.swift
+cd "$WORK/ios"
 python3 - <<'PY'
 from pathlib import Path
 p=Path('INWARD/Sources/MessagesView.swift')
@@ -36,7 +37,6 @@ s=s.replace('    private func load() async {',helper+'    private func load() as
 p.write_text(s)
 PY
 if ! command -v xcodegen >/dev/null 2>&1; then brew install xcodegen; fi
-cd "$WORK/ios"
 xcodegen generate
 xcodebuild -project INWARD.xcodeproj -scheme INWARD -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$WORK/DerivedData" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO DEVELOPMENT_TEAM='' clean build
 APP="$WORK/DerivedData/Build/Products/Release-iphoneos/INWARD.app"
@@ -61,7 +61,7 @@ main 2>&1 | tee "$LOG"
 STATUS=${PIPESTATUS[0]}
 set -e
 if [ "$STATUS" -ne 0 ]; then
-  grep -E 'error:|Assertion failed|failed' "$LOG" | tail -n 20 | while IFS= read -r line; do
+  tail -n 30 "$LOG" | while IFS= read -r line; do
     line="${line//'%'/'%25'}"; line="${line//$'\r'/''}"
     printf '::error::%s\n' "$line"
   done
