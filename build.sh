@@ -43,9 +43,8 @@ if [ "$STATUS" -ne 0 ]; then
   done
   exit "$STATUS"
 fi
-trap 'printf "::error::Artifact upload failed at line %s: %s\n" "$LINENO" "$BASH_COMMAND"' ERR
 cd "$WORK"
 npm init -y >/dev/null 2>&1
 npm install @actions/artifact --no-audit --no-fund
-node -e 'const artifact=require("@actions/artifact").create(); artifact.uploadArtifact("INWARD-unsigned-ipa",["'"$WORK"'/INWARD-unsigned.ipa","'"$LOG"'"],"'"$WORK"'",{retentionDays:30}).then(r=>{console.log("Uploaded artifact: "+r.id);}).catch(e=>{console.error(e);process.exit(1);});'
+node -e 'const artifact=require("@actions/artifact").create(); artifact.uploadArtifact("INWARD-unsigned-ipa",["'"$WORK"'/INWARD-unsigned.ipa","'"$LOG"'"],"'"$WORK"'",{retentionDays:30}).then(r=>{console.log("Uploaded artifact: "+r.id);}).catch(e=>{for(const line of String(e.stack||e).split("\n")) console.log("::error::ARTIFACT "+line.replace(/%/g,"%25"));process.exit(1);});'
 echo 'INWARD unsigned IPA uploaded as a GitHub Actions artifact.'
