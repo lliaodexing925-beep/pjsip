@@ -41,33 +41,11 @@ if [ "$STATUS" -ne 0 ]; then
     line="${line//'%'/'%25'}"; line="${line//$'\r'/''}"
     printf '::error::%s\n' "$line"
   done
+  exit "$STATUS"
 fi
-trap 'printf "::error::Publish failed at line %s: %s\n" "$LINENO" "$BASH_COMMAND"' ERR
-cd "$ROOT"
-git config user.name 'github-actions[bot]'
-git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-if git ls-remote --exit-code --heads origin ipa-artifacts >/dev/null 2>&1; then
-  git fetch origin ipa-artifacts
-  git checkout -B ipa-artifacts FETCH_HEAD
-else
-  git checkout --orphan ipa-artifacts
-  git rm -rf .
-fi
-cp "$LOG" ./build.log
-{
-  echo "Source commit: ${GITHUB_SHA:-unknown}"
-  echo "Built at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  echo "Build exit status: $STATUS"
-  echo 'Signing: unsigned; sign on your own device before installation.'
-} > build-info.txt
-if [ "$STATUS" -eq 0 ] && [ -f "$WORK/INWARD-unsigned.ipa" ]; then
-  cp "$WORK/INWARD-unsigned.ipa" ./INWARD-unsigned.ipa
-  shasum -a 256 ./INWARD-unsigned.ipa >> build-info.txt
-  git add INWARD-unsigned.ipa
-fi
-git add build.log build-info.txt
-if ! git diff --cached --quiet; then
-  git commit -m 'INWARD iOS build output [skip ci]'
-  git push origin HEAD:ipa-artifacts
-fi
-exit "$STATUS"
+trap 'printf "::error::Artifact upload failed at line %s: %s\n" "$LINENO" "$BASH_COMMAND"' ERR
+cd "$WORK"
+npm init -y >/dev/null 2>&1
+npm install @actions/artifact --no-audit --no-fund
+node -e 'const artifact=require("@actions/artifact").create(); artifact.uploadArtifact("INWARD-unsigned-ipa",["'"$WORK"'/INWARD-unsigned.ipa","'"$LOG"'"],"'"$WORK"'",{retentionDays:30}).then(r=>{console.log("Uploaded artifact: "+r.id);}).catch(e=>{console.error(e);process.exit(1);});'
+echo 'INWARD unsigned IPA uploaded as a GitHub Actions artifact.'
