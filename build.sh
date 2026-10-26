@@ -11,7 +11,30 @@ sed -i.bak 's/hQqFLAG/hQZqFLAG/' source.part06
 cat source.part00 source.part01 source.part02 source.part03 source.part04 source.part05 source.part06 source.part07 source.part08 | tr -d '\n\r' | base64 -D > "$WORK/INWARD-iOS-source.tar.xz"
 echo 'ed994f4610181f90dda768e7aea77208695fb226bf5a8351f18cc5f8d63df0bd  '"$WORK/INWARD-iOS-source.tar.xz" | shasum -a 256 -c -
 tar -xJf "$WORK/INWARD-iOS-source.tar.xz" -C "$WORK/ios"
-/usr/bin/sed -i '' -e 's/\.weight(\.850)/.weight(.heavy)/g' -e 's/\.weight(\.800)/.weight(.heavy)/g' -e 's/\.weight(\.750)/.weight(.bold)/g' -e 's/\.weight(\.700)/.weight(.bold)/g' -e 's/\.weight(\.650)/.weight(.semibold)/g' -e 's/\.weight(\.600)/.weight(.semibold)/g' -e 's/\.weight(\.500)/.weight(.medium)/g' -e 's/weight: \.850/weight: .heavy/g' -e 's/weight: \.800/weight: .heavy/g' -e 's/weight: \.750/weight: .bold/g' -e 's/weight: \.700/weight: .bold/g' -e 's/weight: \.650/weight: .semibold/g' -e 's/weight: \.600/weight: .semibold/g' -e 's/weight: \.500/weight: .medium/g' "$WORK"/ios/INWARD/Sources/*.swift
+/usr/bin/sed -i '' -e 's/\.weight(\.850)/.weight(.heavy)/g' -e 's/\.weight(\.800)/.weight(.heavy)/g' -e 's/\.weight(\.750)/.weight(.bold)/g' -e 's/\.weight(\.700)/.weight(.bold)/g' -e 's/\.weight(\.650)/.weight(.semibold)/g' -e 's/\.weight(\.600)/.weight(.semibold)/g' -e 's/\.weight(\.500)/.weight(.medium)/g' -e 's/weight: \.850/weight: .heavy/g' -e 's/weight: \.800/weight: .heavy/g' -e 's/weight: \.750/weight: .bold/g' -e 's/weight: \.700/weight: .bold/g' -e 's/weight: \.650/weight: .semibold/g' -e 's/weight: \.600/weight: .semibold/g' -e 's/weight: \.500/weight: .medium/g' -e 's/\.topBarTrailing/.navigationBarTrailing/g' -e 's/\.topBarLeading/.navigationBarLeading/g' -e 's/{ _, _ in/{ _ in/g' "$WORK"/ios/INWARD/Sources/*.swift
+python3 - <<'PY'
+from pathlib import Path
+p=Path('INWARD/Sources/MessagesView.swift')
+s=p.read_text()
+old='''                                Text(message.body).padding(.horizontal, 13).padding(.vertical, 10)
+                                    .background(message.sender == "me" ? INTheme.green : INTheme.white)
+                                    .foregroundStyle(message.sender == "me" ? .white : INTheme.ink)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16)).textSelection(.enabled)'''
+assert old in s
+s=s.replace(old,'                                messageBubble(message)')
+helper='''    private func messageBubble(_ message: Message) -> some View {
+        Text(message.body)
+            .padding(.horizontal, 13)
+            .padding(.vertical, 10)
+            .background(message.sender == "me" ? INTheme.green : INTheme.white)
+            .foregroundStyle(message.sender == "me" ? .white : INTheme.ink)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .textSelection(.enabled)
+    }
+'''
+s=s.replace('    private func load() async {',helper+'    private func load() async {')
+p.write_text(s)
+PY
 if ! command -v xcodegen >/dev/null 2>&1; then brew install xcodegen; fi
 cd "$WORK/ios"
 xcodegen generate
@@ -38,7 +61,7 @@ main 2>&1 | tee "$LOG"
 STATUS=${PIPESTATUS[0]}
 set -e
 if [ "$STATUS" -ne 0 ]; then
-  tail -n 30 "$LOG" | while IFS= read -r line; do
+  grep -E 'error:|Assertion failed|failed' "$LOG" | tail -n 20 | while IFS= read -r line; do
     line="${line//'%'/'%25'}"; line="${line//$'\r'/''}"
     printf '::error::%s\n' "$line"
   done
