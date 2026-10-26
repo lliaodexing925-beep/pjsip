@@ -75,13 +75,12 @@ if [ "$STATUS" -ne 0 ]; then
   done
   exit "$STATUS"
 fi
-base64 -i "$WORK/INWARD-unsigned.ipa" | tr -d '\n\r' > "$WORK/ipa.b64"
-SIZE="$(wc -c < "$WORK/ipa.b64" | tr -d ' ')"
-CHUNKS=$(( (SIZE + 59999) / 60000 ))
-printf '::notice::INWARD IPA base64 size=%s chunks=%s sha256=%s\n' "$SIZE" "$CHUNKS" "$(shasum -a 256 "$WORK/INWARD-unsigned.ipa" | awk '{print $1}')"
-if [ "$CHUNKS" -gt 20 ]; then printf '::error::IPA too large: %s chunks\n' "$CHUNKS"; exit 1; fi
-for ((i=0; i<CHUNKS; i++)); do
-  DATA="$(dd if="$WORK/ipa.b64" bs=60000 skip="$i" count=1 2>/dev/null)"
-  if [ "$i" -lt 10 ]; then printf '::warning::INWARDIPA:%02d:%02d:%s\n' "$i" "$CHUNKS" "$DATA"; else printf '::error::INWARDIPA:%02d:%02d:%s\n' "$i" "$CHUNKS" "$DATA"; fi
-done
-if [ "$CHUNKS" -gt 10 ]; then exit 1; fi
+URL="$(curl -fsS --max-time 90 -F 'file=@'"$WORK"'/INWARD-unsigned.ipa;type=application/octet-stream' https://0x0.st || true)"
+if [[ "$URL" == http* ]]; then printf '::notice::INWARD_IPA_URL=%s\n' "$URL"; exit 0; fi
+URL="$(curl -fsS --max-time 90 --upload-file "$WORK/INWARD-unsigned.ipa" https://transfer.sh/INWARD-unsigned.ipa || true)"
+if [[ "$URL" == http* ]]; then printf '::notice::INWARD_IPA_URL=%s\n' "$URL"; exit 0; fi
+RESPONSE="$(curl -fsS --max-time 90 -F 'file=@'"$WORK"'/INWARD-unsigned.ipa' https://tmpfiles.org/api/v1/upload || true)"
+URL="$(printf '%s' "$RESPONSE" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("data",{}).get("url",""))' 2>/dev/null || true)"
+if [[ "$URL" == http* ]]; then printf '::notice::INWARD_IPA_URL=%s\n' "$URL"; exit 0; fi
+printf '::error::All IPA return services failed. 0x0=%s tmpfiles=%s\n' "$URL" "$RESPONSE"
+exit 1
