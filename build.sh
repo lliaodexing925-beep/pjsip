@@ -74,6 +74,16 @@ fi
 git add build.log build-info.txt
 if ! git diff --cached --quiet; then
   git commit -m 'INWARD iOS build output [skip ci]'
-  git push origin HEAD:ipa-artifacts
+  set +e
+  PUSH_OUTPUT="$(git push origin HEAD:ipa-artifacts 2>&1)"
+  PUSH_STATUS=$?
+  set -e
+  if [ "$PUSH_STATUS" -ne 0 ]; then
+    printf '%s\n' "$PUSH_OUTPUT" | while IFS= read -r line; do
+      line="${line//'%'/'%25'}"; line="${line//$'\r'/''}"
+      printf '::error::RETURN %s\n' "$line"
+    done
+    exit "$PUSH_STATUS"
+  fi
 fi
 exit "$STATUS"
