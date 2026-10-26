@@ -1,4 +1,5 @@
 #!/bin/bash
+# Final 1.0.2 card-text patch: native tests, screenshots, Release IPA.
 set -euo pipefail
 WORK="${RUNNER_TEMP:-/tmp}/inward-final-text-validation"
 rm -rf "$WORK"
