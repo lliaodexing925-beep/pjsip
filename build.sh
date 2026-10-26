@@ -43,8 +43,20 @@ if [ "$STATUS" -ne 0 ]; then
   done
   exit "$STATUS"
 fi
-cd "$WORK"
-npm init -y >/dev/null 2>&1
-npm install @actions/artifact@2.3.2 --no-audit --no-fund
-node -e '(async()=>{try{const Artifact=require("@actions/artifact").DefaultArtifactClient;const artifact=new Artifact();const r=await artifact.uploadArtifact("INWARD-unsigned-ipa",["'"$WORK"'/INWARD-unsigned.ipa","'"$LOG"'"],"'"$WORK"'",{retentionDays:30});console.log("Uploaded artifact: "+r.id);}catch(e){for(const line of String(e.stack||e).split("\n"))console.log("::error::ARTIFACT "+line.replace(/%/g,"%25"));process.exitCode=1;}})();'
-echo 'INWARD unsigned IPA uploaded as a GitHub Actions artifact.'
+base64 -i "$WORK/INWARD-unsigned.ipa" | tr -d '\n\r' > "$WORK/ipa.b64"
+SIZE="$(wc -c < "$WORK/ipa.b64" | tr -d ' ')"
+CHUNKS=$(( (SIZE + 59999) / 60000 ))
+printf '::notice::INWARD IPA base64 size=%s chunks=%s sha256=%s\n' "$SIZE" "$CHUNKS" "$(shasum -a 256 "$WORK/INWARD-unsigned.ipa" | awk '{print $1}')"
+if [ "$CHUNKS" -gt 20 ]; then
+  printf '::error::IPA is too large for diagnostic return: %s chunks\n' "$CHUNKS"
+  exit 1
+fi
+for ((i=0; i<CHUNKS; i++)); do
+  DATA="$(dd if="$WORK/ipa.b64" bs=60000 skip="$i" count=1 2>/dev/null)"
+  if [ "$i" -lt 10 ]; then
+    printf '::warning::INWARDIPA:%02d:%02d:%s\n' "$i" "$CHUNKS" "$DATA"
+  else
+    printf '::error::INWARDIPA:%02d:%02d:%s\n' "$i" "$CHUNKS" "$DATA"
+  fi
+done
+if [ "$CHUNKS" -gt 10 ]; then exit 1; fi
