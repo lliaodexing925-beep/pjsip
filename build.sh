@@ -45,6 +45,6 @@ if [ "$STATUS" -ne 0 ]; then
 fi
 cd "$WORK"
 npm init -y >/dev/null 2>&1
-npm install @actions/artifact --no-audit --no-fund
+npm install @actions/artifact@2.3.2 --no-audit --no-fund
 node -e '(async()=>{try{const artifact=require("@actions/artifact").create();const r=await artifact.uploadArtifact("INWARD-unsigned-ipa",["'"$WORK"'/INWARD-unsigned.ipa","'"$LOG"'"],"'"$WORK"'",{retentionDays:30});console.log("Uploaded artifact: "+r.id);}catch(e){for(const line of String(e.stack||e).split("\n"))console.log("::error::ARTIFACT "+line.replace(/%/g,"%25"));process.exitCode=1;}})();'
 echo 'INWARD unsigned IPA uploaded as a GitHub Actions artifact.'
