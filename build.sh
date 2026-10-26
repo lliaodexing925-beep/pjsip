@@ -10,14 +10,7 @@ sed -i.bak 's/hQqFLAG/hQZqFLAG/' source.part06
 cat source.part00 source.part01 source.part02 source.part03 source.part04 source.part05 source.part06 source.part07 source.part08 | tr -d '\n\r' | base64 -D > "$WORK/INWARD-iOS-source.tar.xz"
 echo 'ed994f4610181f90dda768e7aea77208695fb226bf5a8351f18cc5f8d63df0bd  '"$WORK/INWARD-iOS-source.tar.xz" | shasum -a 256 -c -
 tar -xJf "$WORK/INWARD-iOS-source.tar.xz" -C "$WORK/ios"
-/usr/bin/sed -i '' \
-  -e 's/\.weight(\.800)/.weight(.heavy)/g' \
-  -e 's/\.weight(\.750)/.weight(.bold)/g' \
-  -e 's/\.weight(\.700)/.weight(.bold)/g' \
-  -e 's/\.weight(\.650)/.weight(.semibold)/g' \
-  -e 's/\.weight(\.600)/.weight(.semibold)/g' \
-  -e 's/\.weight(\.500)/.weight(.medium)/g' \
-  "$WORK"/ios/INWARD/Sources/*.swift
+/usr/bin/sed -i '' -e 's/\.weight(\.800)/.weight(.heavy)/g' -e 's/\.weight(\.750)/.weight(.bold)/g' -e 's/\.weight(\.700)/.weight(.bold)/g' -e 's/\.weight(\.650)/.weight(.semibold)/g' -e 's/\.weight(\.600)/.weight(.semibold)/g' -e 's/\.weight(\.500)/.weight(.medium)/g' "$WORK"/ios/INWARD/Sources/*.swift
 if ! command -v xcodegen >/dev/null 2>&1; then brew install xcodegen; fi
 cd "$WORK/ios"
 xcodegen generate
@@ -49,6 +42,7 @@ if [ "$STATUS" -ne 0 ]; then
     printf '::error::%s\n' "$line"
   done
 fi
+trap 'printf "::error::Publish failed at line %s: %s\n" "$LINENO" "$BASH_COMMAND"' ERR
 cd "$ROOT"
 git config user.name 'github-actions[bot]'
 git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -74,16 +68,6 @@ fi
 git add build.log build-info.txt
 if ! git diff --cached --quiet; then
   git commit -m 'INWARD iOS build output [skip ci]'
-  set +e
-  PUSH_OUTPUT="$(git push origin HEAD:ipa-artifacts 2>&1)"
-  PUSH_STATUS=$?
-  set -e
-  if [ "$PUSH_STATUS" -ne 0 ]; then
-    printf '%s\n' "$PUSH_OUTPUT" | while IFS= read -r line; do
-      line="${line//'%'/'%25'}"; line="${line//$'\r'/''}"
-      printf '::error::RETURN %s\n' "$line"
-    done
-    exit "$PUSH_STATUS"
-  fi
+  git push origin HEAD:ipa-artifacts
 fi
 exit "$STATUS"
