@@ -7,7 +7,7 @@ LOG="$WORK/build.log"
 main() {
   set -e
   curl -fsSL --retry 2 --max-time 120 'https://n.uguu.se/GxVMzziH.tar.gz' -o "$WORK/source.tar.gz"
-  echo '10b8540dd684824898dfceb1a6e19f20eb0a4a07f10ad89d6247197982b54fe3200  '"$WORK/source.tar.gz" | shasum -a 256 -c -
+  echo '10b8540dd684824898dfceb1a6e19f20eb0a4a07f10ad89d6247197982b54fe3  '"$WORK/source.tar.gz" | shasum -a 256 -c -
   tar -xzf "$WORK/source.tar.gz" -C "$WORK/ios"
   cd "$WORK/ios"
   if ! command -v xcodegen >/dev/null 2>&1; then brew install xcodegen; fi
