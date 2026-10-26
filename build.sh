@@ -45,7 +45,7 @@ p.write_text(s)
 PY
 if ! command -v xcodegen >/dev/null 2>&1; then brew install xcodegen; fi
 xcodegen generate
-xcodebuild -project INWARD.xcodeproj -scheme INWARD -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$WORK/DerivedData" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO DEVELOPMENT_TEAM='' clean build
+xcodebuild -quiet -project INWARD.xcodeproj -scheme INWARD -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$WORK/DerivedData" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO DEVELOPMENT_TEAM='' clean build
 APP="$WORK/DerivedData/Build/Products/Release-iphoneos/INWARD.app"
 test -d "$APP"
 test -x "$APP/INWARD"
@@ -68,7 +68,7 @@ main 2>&1 | tee "$LOG"
 STATUS=${PIPESTATUS[0]}
 set -e
 if [ "$STATUS" -ne 0 ]; then
-  tail -n 30 "$LOG" | while IFS= read -r line; do
+  { grep 'error:' "$LOG" || tail -n 30 "$LOG"; } | tail -n 20 | while IFS= read -r line; do
     line="${line//'%'/'%25'}"; line="${line//$'\r'/''}"
     printf '::error::%s\n' "$line"
   done
