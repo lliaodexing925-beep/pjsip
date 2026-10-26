@@ -39,6 +39,13 @@ targets:
     platform: iOS
     sources:
       - INWARDTests
+    settings:
+      base:
+        PRODUCT_NAME: INWARDTests
+        PRODUCT_MODULE_NAME: INWARDTests
+        PRODUCT_BUNDLE_IDENTIFIER: com.inward.app.tests
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: ""
     dependencies:
       - target: INWARD
 schemes:
