@@ -1,62 +1,87 @@
-#!/bin/sh
+#!/bin/bash
+set -euo pipefail
 
-# environment variables
-export OPENSSL_VERSION="1.1.1c" # specify the openssl version to use
-export PJSIP_VERSION="2.9"
-export OPUS_VERSION="1.3.1"
-export MACOS_MIN_SDK_VERSION="10.12"
-export IOS_MIN_SDK_VERSION="9.0"
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+WORK="${RUNNER_TEMP:-/tmp}/inward-ios-build"
+rm -rf "$WORK"
+mkdir -p "$WORK/ios" "$WORK/package"
 
-# see http://stackoverflow.com/a/3915420/318790
-function realpath { echo $(cd $(dirname "$1"); pwd)/$(basename "$1"); }
-__FILE__=`realpath "$0"`
-__DIR__=`dirname "${__FILE__}"`
+cd "$ROOT"
+# Repair the single transport-dropped character, then verify the complete archive.
+sed -i.bak 's/hQqFLAG/hQZqFLAG/' source.part06
+cat source.part00 source.part01 source.part02 source.part03 source.part04 source.part05 source.part06 source.part07 source.part08 \
+  | tr -d '\n\r' \
+  | base64 -D > "$WORK/INWARD-iOS-source.tar.xz"
+echo 'ed994f4610181f90dda768e7aea77208695fb226bf5a8351f18cc5f8d63df0bd  '"$WORK/INWARD-iOS-source.tar.xz" | shasum -a 256 -c -
+tar -xJf "$WORK/INWARD-iOS-source.tar.xz" -C "$WORK/ios"
 
-BUILD_DIR="${__DIR__}/build"
-if [ ! -d ${BUILD_DIR} ]; then
-    mkdir ${BUILD_DIR}
+if ! command -v xcodegen >/dev/null 2>&1; then
+  brew install xcodegen
 fi
 
-# download
-function download() {
-    "${__DIR__}/download.sh" "$1" "$2" #--no-cache
-}
+cd "$WORK/ios"
+xcodegen generate
+xcodebuild \
+  -project INWARD.xcodeproj \
+  -scheme INWARD \
+  -configuration Release \
+  -sdk iphoneos \
+  -destination 'generic/platform=iOS' \
+  -derivedDataPath "$WORK/DerivedData" \
+  CODE_SIGNING_ALLOWED=NO \
+  CODE_SIGNING_REQUIRED=NO \
+  DEVELOPMENT_TEAM='' \
+  clean build
 
-# openssl
-OPENSSL_DIR="${BUILD_DIR}/openssl"
-OPENSSL_ENABLED=
-function openssl() {
-    if [ ! -d "${OPENSSL_DIR}/lib/iOS" ] || [ ! -d "${OPENSSL_DIR}/lib/macOS" ]; then
-        if [ ! -d "${OPENSSL_DIR}" ]; then
-            mkdir -p "${OPENSSL_DIR}"
-        fi
-        "${__DIR__}/openssl/openssl.sh" "--version=${OPENSSL_VERSION}" "--reporoot=${OPENSSL_DIR}" "--macos-min-sdk=${MACOS_MIN_SDK_VERSION}" "--ios-min-sdk=${IOS_MIN_SDK_VERSION}"
-    else
-        echo "Using OpenSSL..."
-    fi
-    
-    OPENSSL_ENABLED=1
-}
+APP="$WORK/DerivedData/Build/Products/Release-iphoneos/INWARD.app"
+test -d "$APP"
+test -x "$APP/INWARD"
+plutil -lint "$APP/Info.plist"
+file "$APP/INWARD"
+lipo -info "$APP/INWARD"
+if lipo -info "$APP/INWARD" | grep -q 'arm64'; then
+  echo 'Native arm64 executable verified.'
+else
+  echo 'Missing arm64 executable.' >&2
+  exit 1
+fi
+if grep -R -E 'WKWebView|UIWebView' "$WORK/ios/INWARD/Sources"; then
+  echo 'Unexpected web-wrapper implementation.' >&2
+  exit 1
+fi
 
-# opus
-OPUS_DIR="${BUILD_DIR}/opus"
-OPUS_ENABLED=
-function opus() {
-    if [ ! -f "${OPUS_DIR}/dependencies/lib/libopus.a" ] || [ ! -d "${OPUS_DIR}/dependencies/include/opus/" ]; then
-        "${__DIR__}/opus.sh" "${OPUS_DIR}"
-    else
-        echo "Using OPUS..."
-    fi
-    
-    OPUS_ENABLED=1
+cp -R "$APP" "$WORK/package/Payload/INWARD.app" 2>/dev/null || {
+  mkdir -p "$WORK/package/Payload"
+  cp -R "$APP" "$WORK/package/Payload/INWARD.app"
 }
+cd "$WORK/package"
+/usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload "$WORK/INWARD-unsigned.ipa"
+unzip -t "$WORK/INWARD-unsigned.ipa"
+unzip -l "$WORK/INWARD-unsigned.ipa" | grep -E 'Payload/INWARD.app/(INWARD|Info.plist|Assets.car)$'
+shasum -a 256 "$WORK/INWARD-unsigned.ipa"
 
-# pjsip
-PJSIP_DIR="${BUILD_DIR}/pjproject"
-function pjsip() {
-    "${__DIR__}/pjsip.sh" "${PJSIP_DIR}" --with-openssl "${OPENSSL_DIR}" --with-opus "${OPUS_DIR}/dependencies"
-}
-
-openssl
-opus
-pjsip
+# checkout persists the workflow token, allowing the binary artifact to be
+# returned on a dedicated branch without editing the existing workflow.
+cd "$ROOT"
+git config user.name 'github-actions[bot]'
+git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+if git ls-remote --exit-code --heads origin ipa-artifacts >/dev/null 2>&1; then
+  git fetch origin ipa-artifacts
+  git checkout -B ipa-artifacts FETCH_HEAD
+else
+  git checkout --orphan ipa-artifacts
+  git rm -rf .
+fi
+cp "$WORK/INWARD-unsigned.ipa" ./INWARD-unsigned.ipa
+{
+  echo "Source commit: ${GITHUB_SHA:-unknown}"
+  echo "Built at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo 'Signing: unsigned; sign on your own device before installation.'
+  shasum -a 256 ./INWARD-unsigned.ipa
+} > build-info.txt
+git add INWARD-unsigned.ipa build-info.txt
+if ! git diff --cached --quiet; then
+  git commit -m 'INWARD unsigned IPA [skip ci]'
+  git push origin HEAD:ipa-artifacts
+fi
+echo 'INWARD_IPA_BRANCH=ipa-artifacts'
