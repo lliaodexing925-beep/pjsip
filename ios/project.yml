@@ -1,0 +1,54 @@
+name: INWARD
+options:
+  bundleIdPrefix: com.inward
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    MARKETING_VERSION: "1.0.1"
+    CURRENT_PROJECT_VERSION: "2"
+    GENERATE_INFOPLIST_FILE: NO
+    INFOPLIST_FILE: INWARD/Resources/Info.plist
+    PRODUCT_BUNDLE_IDENTIFIER: com.inward.app
+    PRODUCT_NAME: INWARD
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+targets:
+  INWARD:
+    type: application
+    platform: iOS
+    sources:
+      - INWARD/Sources
+      - path: INWARD/Resources
+        buildPhase: resources
+        excludes:
+          - Info.plist
+          - INWARD.entitlements
+    settings:
+      base:
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+    entitlements:
+      path: INWARD/Resources/INWARD.entitlements
+  INWARDTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - INWARDTests
+    dependencies:
+      - target: INWARD
+schemes:
+  INWARD:
+    build:
+      targets:
+        INWARD: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - INWARDTests
